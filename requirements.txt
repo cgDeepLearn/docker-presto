@@ -1,0 +1,10 @@
+DBUtils==1.3
+Flask==1.1.2
+Flask-RESTful==0.3.8
+gevent
+gunicorn
+presto-python-client==0.7.0
+psycopg2==2.8.6
+redis==3.5.3
+requests==2.25.1
+setuptools==47.1.0
