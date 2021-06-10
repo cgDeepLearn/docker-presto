@@ -36,12 +36,16 @@ RUN \
   cd /opt && \
   pip3 install -r requirements.txt -i https://mirrors.cloud.tencent.com/pypi/simple && \
   echo "**** Installing s6-overlay ****" && \
+  # 可以先下载好s6-overlay-amd64-installer到当前目录
   /opt/s6-overlay-amd64-installer / && \
   echo "**** clean up ****" && \
   yum clean all && \
   rm -f /opt/presto-server-rpm-0.243.1.rpm /opt/s6-overlay-amd64-installer
 
 # copy local files
+# 可以先在当前目录解压
+RUN \
+  cd /opt && tar zxvf root.tar.gz  
 COPY root/ /
 
 ENTRYPOINT ["/init"]
