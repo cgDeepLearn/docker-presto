@@ -1,0 +1,57 @@
+FROM centos:7
+
+# copy source files
+#COPY . /usr/app/dm-presto
+
+RUN \
+  curl -so /etc/yum.repos.d/CentOS-Base.repo http://mirrors.cloud.tencent.com/repo/centos7_base.repo && \
+  curl -so /etc/yum.repos.d/epel.repo http://mirrors.cloud.tencent.com/repo/epel-7.repo && \
+  yum makecache && \
+  yum install -y git gcc g++ zlib zlib-devel bzip2-devel xz-devel  make wget libffi-devel openssl-devel python2-pip python2-devel && \
+  yum install -y sudo net-tools openssh-server java-1.8.0-openjdk  postgresql-devel  && \  
+  echo "安装python3.8.5" && \
+  wget https://cdn.npm.taobao.org/dist/python/3.8.5/Python-3.8.5.tgz && \
+  tar -zxvf Python-3.8.5.tgz && mv Python-3.8.5 /usr/local && \
+  cd /usr/local/Python-3.8.5 && \
+  ./configure --prefix=/usr/local/python3  && make && make install && make clean && \
+  ln -s /usr/local/python3/bin/python3 /usr/bin/python3 && \
+  ln -s /usr/local/python3/bin/pip3 /usr/bin/pip3  
+
+COPY . /usr/app/dm-presto
+
+RUN \
+  echo "**** SSH Configuration ****" && \
+  echo 'root:root' | chpasswd && \
+  ssh-keygen -t dsa -P '' -f /etc/ssh/ssh_host_dsa_key && \
+  ssh-keygen -t rsa -P '' -f /etc/ssh/ssh_host_rsa_key && \
+  ssh-keygen -t ecdsa -P '' -f /etc/ssh/ssh_host_ecdsa_key && \
+  ssh-keygen -t ed25519 -P '' -f /etc/ssh/ssh_host_ed25519_key && \
+  ssh-keygen -t rsa -P '' -f ~/.ssh/id_rsa && \
+  cat ~/.ssh/id_rsa.pub >> ~/.ssh/authorized_keys && chmod 600 ~/.ssh/authorized_keys && \
+  /usr/sbin/sshd && \
+  echo "**** Installing Presto ****" && \
+  # git clone https://github.com/prestodb/presto-admin.git && \
+  cd /usr/app/dm-presto/presto-admin && \
+  pip install -r requirements.txt -i https://mirrors.cloud.tencent.com/pypi/simple && \
+  python setup.py develop && \
+  mkdir -p /root/.prestoadmin && \
+  mv config.json /root/.prestoadmin/ && \
+  presto-admin server install /usr/app/dm-presto/presto-server-rpm-0.243.1.rpm && \
+  cp ../config.properties /etc/presto/ && \
+  sed -i '/GB/d' /etc/presto/config.properties && \
+  rm -f /opt/prestoadmin/packages/presto-server-rpm-0.243.1.rpm && \
+  echo "**** install pip packages ****" && \
+  cd /usr/app/dm-presto && \
+  pip3 install --upgrade pip && \
+  pip3 install -r requirements.txt --default-timeout=1000 -i https://pypi.douban.com/simple && \
+  echo "**** Installing s6-overlay ****" && \
+  /usr/app/dm-presto/s6-overlay-amd64-installer / && \
+  echo "**** clean up ****" && \
+  yum clean all && \
+  rm -f /usr/app/dm-presto/presto-server-rpm-0.243.1.rpm /usr/app/dm-presto/s6-overlay-amd64-installer
+
+# copy local files
+COPY root/ /
+COPY iotdb-plugin/ /usr/lib/presto/lib/plugin/
+
+ENTRYPOINT ["/init"]
